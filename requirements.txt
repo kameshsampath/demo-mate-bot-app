@@ -1,0 +1,3 @@
+slack_bolt
+snowflake-snowpark-python
+snowflake>0.13.0
