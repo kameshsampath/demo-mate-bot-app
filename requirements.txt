@@ -1,3 +1,5 @@
 slack_bolt
+snowflake
 snowflake-snowpark-python
-snowflake>0.13.0
+pytest
+ipykernel
