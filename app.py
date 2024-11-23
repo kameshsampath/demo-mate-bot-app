@@ -84,30 +84,58 @@ def message_event_handler(ack, body, say, logger):
 
 
 @app.command("/setup")
-def setup_handler(ack, respond, command, client, logger):
-    setLogLevel(logger)
-    ack()
-    logger.debug(f"Received Message Event: {command}")
-
-    command_text = command.get("text", "").strip()
-
-    if not command_text:
-        # Send the response with input block
-        respond(
-            blocks=db_schema_setup,
-            response_type="ephemeral",  # Only visible to the user who triggered the command
-        )
-    else:
-        logger.debug(f"Body Text:{command_text}")
-        db_name, schema_name = tuple(command_text.strip().split())
-        channel = command["channel_id"]
-        do_setup(
-            channel_id=channel,
-            client=client,
-            db_name=db_name,
-            schema_name=schema_name,
-            logger=logger,
-        )
+def setup_handler(ack, _body, client, command, respond):
+    try:
+        setLogLevel(logger)
+        ack()
+        command_text = command.get("text", "").strip()
+        logger.debug(f"command_text:{command_text}")
+        if not command_text:
+            logger.debug("Sending Block")
+            try:
+                # Send the response with input block
+                respond(
+                    blocks=db_schema_setup,
+                    response_type="ephemeral",  # Only visible to the user who triggered the command
+                )
+            except Exception as e:
+                logger.error(f"Failed to send response: {e}")
+                # Fallback response
+                respond(
+                    text="Sorry, there was an error displaying the setup form.",
+                    response_type="ephemeral",
+                )
+        else:
+            try:
+                logger.debug(f"Body Text:{command_text}")
+                db_name, schema_name = tuple(command_text.strip().split())
+                channel = command["channel_id"]
+                do_setup(
+                    channel_id=channel,
+                    client=client,
+                    db_name=db_name,
+                    schema_name=schema_name,
+                    logger=logger,
+                )
+            except ValueError as e:
+                respond(
+                    text="Invalid format. Please provide both database name and schema name.",
+                    response_type="ephemeral",
+                )
+            except Exception as e:
+                logger.error(f"Setup error: {e}")
+                respond(text=f"Error during setup: {str(e)}", response_type="ephemeral")
+    except Exception as e:
+        logger.error(f"Global handler error: {e}")
+        try:
+            respond(text="An unexpected error occurred.", response_type="ephemeral")
+        except:
+            # If respond fails, try using client as fallback
+            client.chat_postEphemeral(
+                channel=command["channel_id"],
+                user=command["user_id"],
+                text="An unexpected error occurred.",
+            )
 
 
 @app.action("setup_db")
