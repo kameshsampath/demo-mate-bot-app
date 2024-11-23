@@ -287,27 +287,42 @@ COMMENT = 'created by slack bot setup';
             self.LOGGER.error(e)
             raise Exception(f"Error creating pipe and loading data,{e}")
 
-    def do_setup(self, body) -> Optional[dict]:
+    def do(
+        self,
+        db_name: str = "demo_db",
+        schema_name: str = "data",
+    ):
         """
         Creates or alters Snowflake Database objects using Snowflake Python API.
         """
-        # TODO BUILD BLOCK
-        response = {}
         try:
-            self.LOGGER.debug(f"Setup: {body}")
-            db_name, schema_name = str.split(body, " ")
-            self.LOGGER.debug(f"Database : {schema_name}")
-            self.LOGGER.debug(f"Schema : {db_name}")
+            self.LOGGER.debug(f"Using Database : {db_name} and Schema : {schema_name}")
 
             self.create_db(db_name)
-            self.create_schema(db_name, schema_name)
-            self.create_file_formats(db_name, schema_name)
-            self.create_stage(db_name, schema_name)
-            self.create_table(db_name, schema_name)
-            self.pipe_and_load(db_name, schema_name)
-
-            response["success"] = "All done!"
+            self.create_schema(
+                schema_name=schema_name,
+                db_name=db_name,
+            )
+            self.create_file_formats(
+                db_name=db_name,
+                schema_name=schema_name,
+            )
+            self.create_stage(
+                db_name=db_name,
+                schema_name=schema_name,
+            )
+            self.create_table(
+                db_name=db_name,
+                schema_name=schema_name,
+            )
+            self.pipe_and_load(
+                db_name=db_name,
+                schema_name=schema_name,
+            )
+            self.LOGGER.info("Setup successful")
         except Exception as e:
-            response["error"] = e
-
-        return response
+            self.LOGGER.error(
+                "Error setting up demo",
+                exc_info=True,
+            )
+            raise Exception(f"Error setting up demo,{e}")
