@@ -1,6 +1,5 @@
 import os
 import logging
-from typing import Tuple, Optional
 
 from snowflake.snowpark.session import Session
 from slack_bolt import App
@@ -9,6 +8,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from handler_tasks.db_setup import DBSetup
 from handler_tasks.blocks import db_schema_setup
 
+_log_level = os.getenv("APP_LOG_LEVEL", "WARNING")
+
 logging.basicConfig(
     level=logging.WARNING,
     format="%(name)s:%(levelname)s:%(message)s",
@@ -16,7 +17,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("demo_mate_bot")
-logger.setLevel(level=logging.DEBUG)
+logger.setLevel(level=_log_level)
 
 session = Session.builder.getOrCreate()
 
@@ -34,7 +35,10 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
 
 def setLogLevel(logger):
-    logger.setLevel(level=logging.DEBUG)
+    """
+    Set the logger level to APP_LOG_LEVEL env
+    """
+    logger.setLevel(_log_level)
 
 
 def do_setup(
