@@ -1,0 +1,4 @@
+.snowflake
+.pytest_cache
+.direnv
+.cache
