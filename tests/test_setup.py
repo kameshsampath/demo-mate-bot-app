@@ -2,6 +2,7 @@ import os
 import logging
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -39,11 +40,17 @@ def db_name(root):
     _db_name = "test_db"
     yield _db_name
     root.databases[_db_name].drop(if_exists=True)
+    files = list(Path("../data").glob("*.yaml"))
+    for file_path in files:
+        file_path.unlink()
+        logger.debug(f"Removed: {file_path}")
 
 
 class TestSetup:
     def test_create_db(self, db_setup, root):
         want = ("test_db", "created by slack bot setup")
+
+        db_setup.db_name = want[0]
 
         db_setup.create_db(want[0])
 
@@ -56,6 +63,7 @@ class TestSetup:
     def test_create_schema(self, db_setup, root: Root):
         db_name = "test_db"
         want = ("data", "created by slack bot setup")
+        db_setup.schema_name = want[0]
 
         db_setup.create_schema(
             want[0],

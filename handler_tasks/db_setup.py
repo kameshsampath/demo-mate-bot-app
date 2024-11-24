@@ -1,8 +1,11 @@
 from typing import Optional
 import os
 from datetime import datetime, timezone, timedelta
-
 import logging
+
+from jinja2 import Environment, FileSystemLoader
+
+
 from snowflake.core import Root, CreateMode
 from snowflake.core.database import Database
 from snowflake.core.schema import Schema
@@ -17,9 +20,52 @@ class DBSetup:
     LOGGER.setLevel(logging.DEBUG)
     _mode = CreateMode.if_not_exists
 
-    def __init__(self, session):
+    def __init__(
+        self,
+        session,
+        db_name: str = "demo_db",
+        schema_name: str = "data",
+        semantic_models_stage: str = "semantic_models",
+        semantic_model_file: str = "support_tickets_semantic_model.yaml",
+    ):
         self.session = session
         self.root = Root(session)
+        self._db_name = db_name
+        self._schema_name = schema_name
+        self._semantic_models_stage = semantic_models_stage
+        self._semantic_model_file = semantic_model_file
+
+    @property
+    def db_name(self):
+        return self._db_name
+
+    @db_name.setter
+    def db_name(self, db_name: str):
+        self._db_name = db_name
+
+    @property
+    def schema_name(self):
+        return self._schema_name
+
+    @schema_name.setter
+    def schema_name(self, schema_name: str):
+        self._schema_name = schema_name
+
+    @property
+    def semantic_models_stage(self):
+        return self._semantic_models_stage
+
+    @semantic_models_stage.setter
+    def semantic_models_stage(self, semantic_models_stage: str):
+        self._semantic_models_stage = semantic_models_stage
+
+    @property
+    def semantic_model_file(self):
+        return self._semantic_model_file
+
+    @semantic_model_file.setter
+    def semantic_model_file(self, semantic_model_file: str):
+        self._semantic_model_file = semantic_model_file
 
     def create_db(self, db_name: str) -> None:
         """
@@ -100,7 +146,7 @@ COMMENT = 'created by slack bot setup';
                     comment="created by slack bot setup",
                 ),
                 Stage(
-                    name="semantic_models",
+                    name=self.semantic_models_stage,
                     encryption=StageEncryption(type="SNOWFLAKE_SSE"),
                     directory_table=StageDirectoryTable(enable=True),
                     comment="created by slack bot setup",
@@ -117,17 +163,40 @@ COMMENT = 'created by slack bot setup';
                 )
             # upload the semantic model file
             curr_path = os.path.abspath(os.path.dirname(__file__))
-            _model_file = os.path.join(
+            template_dir = os.path.join(
                 curr_path,
                 "..",
                 "data",
-                "support_tickets_semantic_model.yaml",
             )
+            _model_file_template = os.path.join(
+                template_dir,
+                f"{self.semantic_model_file}.j2",
+            )
+            env = Environment(
+                loader=FileSystemLoader(
+                    template_dir
+                ),  # Look for templates in 'data' directory
+                trim_blocks=True,
+                lstrip_blocks=True,
+            )
+
+            _model_file = os.path.join(
+                template_dir,
+                self.semantic_model_file,
+            )
+
+            template = env.get_template("support_tickets_semantic_model.yaml.j2")
+            rendered_yaml = template.render(
+                {"db_name": db_name, "schema_name": schema_name}
+            )
+            with open(_model_file, "w") as file:
+                file.write(rendered_yaml)
+
             self.LOGGER.debug(
-                f"Uploading semantic model {_model_file} to stage 'semantic_models'"
+                f"Uploading semantic model {_model_file} to stage '{self.semantic_models_stage}'"
             )
             self.root.databases[db_name].schemas[schema_name].stages[
-                "semantic_models"
+                self.semantic_models_stage
             ].put(
                 _model_file,
                 stage_location="/",
@@ -287,37 +356,36 @@ COMMENT = 'created by slack bot setup';
             self.LOGGER.error(e)
             raise Exception(f"Error creating pipe and loading data,{e}")
 
-    def do(
-        self,
-        db_name: str = "demo_db",
-        schema_name: str = "data",
-    ):
+    def do(self):
         """
         Creates or alters Snowflake Database objects using Snowflake Python API.
         """
-        try:
-            self.LOGGER.debug(f"Using Database : {db_name} and Schema : {schema_name}")
 
-            self.create_db(db_name)
+        try:
+            self.LOGGER.debug(
+                f"Using Database : {self.db_name} and Schema : {self.schema_name}"
+            )
+
+            self.create_db(self.db_name)
             self.create_schema(
-                schema_name=schema_name,
-                db_name=db_name,
+                schema_name=self.schema_name,
+                db_name=self.db_name,
             )
             self.create_file_formats(
-                db_name=db_name,
-                schema_name=schema_name,
+                db_name=self.db_name,
+                schema_name=self.schema_name,
             )
             self.create_stage(
-                db_name=db_name,
-                schema_name=schema_name,
+                db_name=self.db_name,
+                schema_name=self.schema_name,
             )
             self.create_table(
-                db_name=db_name,
-                schema_name=schema_name,
+                db_name=self.db_name,
+                schema_name=self.schema_name,
             )
             self.pipe_and_load(
-                db_name=db_name,
-                schema_name=schema_name,
+                db_name=self.db_name,
+                schema_name=self.schema_name,
             )
             self.LOGGER.info("Setup successful")
         except Exception as e:

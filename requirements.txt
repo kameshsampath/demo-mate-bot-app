@@ -1,5 +1,10 @@
 slack_bolt
+jinja2
+PyJWT
 snowflake
 snowflake-snowpark-python
+requests
 pytest
 ipykernel
+snowflake-connector-python[pandas]
+vl-convert-python

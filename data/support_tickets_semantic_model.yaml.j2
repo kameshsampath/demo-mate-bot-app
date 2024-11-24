@@ -3,8 +3,8 @@ tables:
     - name: SUPPORT_TICKETS
       description: A logical table capturing support tickets data.
       base_table:
-          database: "slack_demo"
-          schema: "data"
+          database: "{{db_name}}"
+          schema: "{{schema_name}}"
           table: SUPPORT_TICKETS
 
       dimensions:
