@@ -1,0 +1,10 @@
+.direnv
+.vscode
+work
+.envrc
+.tools-version
+manifest.json
+pytest.ini
+tests
+scripts
+.pytest_cache
